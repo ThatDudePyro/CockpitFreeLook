@@ -13,14 +13,8 @@ namespace CockpitFreeLook
 		private const float MousePitchScale = 0.45f;
 		private const float JoystickLerpCoef = 10f;
 		private const float MouseLerpCoef = 7f;
-		private const float YawBonus = 30f;
 		private static float _currentPitch;
 		private static float _mouseCachedPitch;
-
-		private static readonly AccessTools.FieldRef<CarX.Internal.CockpitCamera, float> LeftAngleRef =
-			AccessTools.FieldRefAccess<CarX.Internal.CockpitCamera, float>("m_leftSideMaxDeltaAngle");
-		private static readonly AccessTools.FieldRef<CarX.Internal.CockpitCamera, float> RightAngleRef =
-			AccessTools.FieldRefAccess<CarX.Internal.CockpitCamera, float>("m_rightSideMaxDeltaAngle");
 
 		private Harmony _harmony;
 
@@ -29,15 +23,8 @@ namespace CockpitFreeLook
 			try
 			{
 				_harmony = new Harmony("CockpitFreeLook.patch");
-
-				var applyRotation = AccessTools.Method(typeof(CarX.Internal.CockpitCamera), "ApplyRotation", new[] { typeof(Quaternion), typeof(Transform) });
-				_harmony.Patch(applyRotation, new HarmonyMethod(typeof(CockpitFreeLook), nameof(AddPitch)));
-
-				var clampRotationY = AccessTools.Method(typeof(CarX.Internal.CockpitCamera), "ClampRotationY", new[] { typeof(Quaternion).MakeByRefType(), typeof(float) });
-				_harmony.Patch(clampRotationY, new HarmonyMethod(typeof(CockpitFreeLook), nameof(WidenClamp)));
-
-				var calcAngles = AccessTools.Method(typeof(CarX.Internal.CockpitCamera), "CalculateEstimatedAnglesByView", new[] { typeof(Vector3) });
-				_harmony.Patch(calcAngles, postfix: new HarmonyMethod(typeof(CockpitFreeLook), nameof(WidenAngles)));
+				var target = AccessTools.Method(typeof(CarX.Internal.CockpitCamera), "ApplyRotation", new[] { typeof(Quaternion), typeof(Transform) });
+				_harmony.Patch(target, new HarmonyMethod(typeof(CockpitFreeLook), nameof(AddPitch)));
 			}
 			catch (Exception)
 			{
@@ -79,20 +66,6 @@ namespace CockpitFreeLook
 
 			_currentPitch = Mathf.Lerp(_currentPitch, targetPitch, Time.deltaTime * lerpCoef);
 			rotation *= Quaternion.Euler(-_currentPitch, 0f, 0f);
-		}
-
-		private static void WidenClamp(ref float maxRotAngle)
-		{
-			if (maxRotAngle > 0f)
-			{
-				maxRotAngle += YawBonus;
-			}
-		}
-
-		private static void WidenAngles(CarX.Internal.CockpitCamera __instance)
-		{
-			LeftAngleRef(__instance) -= YawBonus;
-			RightAngleRef(__instance) += YawBonus;
 		}
 	}
 }
